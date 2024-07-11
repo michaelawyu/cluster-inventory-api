@@ -1,0 +1,356 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: authtokenrequests.multicluster.x-k8s.io
+spec:
+  group: multicluster.x-k8s.io
+  names:
+    kind: AuthTokenRequest
+    listKind: AuthTokenRequestList
+    plural: authtokenrequests
+    singular: authtokenrequest
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AuthTokenRequest represents a request for access token in a multi-cluster
+          environment.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              AuthTokenRequestSpec specifies the spec of an AuthTokenRequest object.
+
+
+              For simiplicity reasons, the current design assumes that:
+                - the referenced service account, roles, and cluster roles are guaranteed to be non-existent
+                  in the target cluster (that is, for now we disregard the scenario where some service accounts,
+                  roles, cluster roles have already existed in the cluster and the application is simply requesting
+                  a token to be created or some bindings to be made).
+                - no rotation is necessary.
+            properties:
+              clusterRoles:
+                description: ClusterRoleRules is a list of cluster roles that is associated
+                  with the service account.
+                items:
+                  description: ClusterRole describes a set of permissions that should
+                    be set under the cluster scope.
+                  properties:
+                    name:
+                      description: Name is the name of the cluster role that should
+                        be created.
+                      type: string
+                    rules:
+                      description: Rules is a list of policies for the resources in
+                        the cluster scope.
+                      items:
+                        description: |-
+                          PolicyRule holds information that describes a policy rule, but does not contain information
+                          about who the rule applies to or which namespace the rule applies to.
+                        properties:
+                          apiGroups:
+                            description: |-
+                              APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of
+                              the enumerated resources in any API group will be allowed. "" represents the core API group and "*" represents all API groups.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          nonResourceURLs:
+                            description: |-
+                              NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full, final step in the path
+                              Since non-resource URLs are not namespaced, this field is only applicable for ClusterRoles referenced from a ClusterRoleBinding.
+                              Rules can either apply to API resources (such as "pods" or "secrets") or non-resource URL paths (such as "/api"),  but not both.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          resourceNames:
+                            description: ResourceNames is an optional white list of
+                              names that the rule applies to.  An empty set means
+                              that everything is allowed.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          resources:
+                            description: Resources is a list of resources this rule
+                              applies to. '*' represents all resources.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          verbs:
+                            description: Verbs is a list of Verbs that apply to ALL
+                              the ResourceKinds contained in this rule. '*' represents
+                              all verbs.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        required:
+                        - verbs
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
+                  required:
+                  - name
+                  type: object
+                maxItems: 20
+                type: array
+                x-kubernetes-list-type: atomic
+                x-kubernetes-validations:
+                - message: ClusterRoles is immutable
+                  rule: self == oldSelf
+              roles:
+                description: Roles is a list of roles that is associated with the
+                  service account.
+                items:
+                  description: Role describes a set of permissions that should be
+                    set under a specific namespace.
+                  properties:
+                    name:
+                      description: Name is the name of the role that should be created.
+                      type: string
+                    namespace:
+                      description: |-
+                        Namespace is the namespace where the set of permissions is applied.
+                        The namespace will be created if it does not already exist.
+                      type: string
+                    rules:
+                      description: Rules is a list of policies for the resources in
+                        the specified namespace.
+                      items:
+                        description: |-
+                          PolicyRule holds information that describes a policy rule, but does not contain information
+                          about who the rule applies to or which namespace the rule applies to.
+                        properties:
+                          apiGroups:
+                            description: |-
+                              APIGroups is the name of the APIGroup that contains the resources.  If multiple API groups are specified, any action requested against one of
+                              the enumerated resources in any API group will be allowed. "" represents the core API group and "*" represents all API groups.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          nonResourceURLs:
+                            description: |-
+                              NonResourceURLs is a set of partial urls that a user should have access to.  *s are allowed, but only as the full, final step in the path
+                              Since non-resource URLs are not namespaced, this field is only applicable for ClusterRoles referenced from a ClusterRoleBinding.
+                              Rules can either apply to API resources (such as "pods" or "secrets") or non-resource URL paths (such as "/api"),  but not both.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          resourceNames:
+                            description: ResourceNames is an optional white list of
+                              names that the rule applies to.  An empty set means
+                              that everything is allowed.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          resources:
+                            description: Resources is a list of resources this rule
+                              applies to. '*' represents all resources.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          verbs:
+                            description: Verbs is a list of Verbs that apply to ALL
+                              the ResourceKinds contained in this rule. '*' represents
+                              all verbs.
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        required:
+                        - verbs
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
+                  required:
+                  - name
+                  - namespace
+                  type: object
+                maxItems: 20
+                type: array
+                x-kubernetes-list-type: atomic
+                x-kubernetes-validations:
+                - message: Roles is immutable
+                  rule: self == oldSelf
+              serviceAccountName:
+                description: |-
+                  ServiceAccountName is the name of the service account that the
+                  access token should be associated with.
+                maxLength: 63
+                type: string
+                x-kubernetes-validations:
+                - message: ServiceAccountName is immutable
+                  rule: self == oldSelf
+              targetClusterProfile:
+                description: TargetClusterProfile is the cluster profile that the
+                  access token is requested for.
+                properties:
+                  apiGroup:
+                    description: APIGroup is the API group of the referred cluster
+                      profile object.
+                    type: string
+                  kind:
+                    description: Kind is the kind of the referred cluster profile
+                      object.
+                    type: string
+                  name:
+                    description: Name is the name of the referred cluster profile
+                      object.
+                    type: string
+                  namespace:
+                    description: Namespace is the namespace of the referred cluster
+                      profile object.
+                    type: string
+                required:
+                - apiGroup
+                - kind
+                - name
+                - namespace
+                type: object
+                x-kubernetes-map-type: atomic
+                x-kubernetes-validations:
+                - message: TargetClusterProfile is immutable
+                  rule: self == oldSelf
+            required:
+            - serviceAccountName
+            - targetClusterProfile
+            type: object
+            x-kubernetes-validations:
+            - message: Roles is required once set
+              rule: '!has(oldSelf.roles) || has(self.roles)'
+            - message: ClusterRoles is required once set
+              rule: '!has(oldSelf.clusterRoles) || has(self.clusterRoles)'
+          status:
+            description: AuthTokenRequestStatus specifies the status of an AuthTokenRequest
+              object.
+            properties:
+              conditions:
+                description: Conditions is an array of conditions for the token request.
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource.\n---\nThis struct is intended for
+                    direct use as an array at the field path .status.conditions.  For
+                    example,\n\n\n\ttype FooStatus struct{\n\t    // Represents the
+                    observations of a foo's current state.\n\t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\"\n\t    //
+                    +patchMergeKey=type\n\t    // +patchStrategy=merge\n\t    // +listType=map\n\t
+                    \   // +listMapKey=type\n\t    Conditions []metav1.Condition `json:\"conditions,omitempty\"
+                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`\n\n\n\t
+                    \   // other fields\n\t}"
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        ---
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
+                        useful (see .node.status.conditions), the ability to deconflict is important.
+                        The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              tokenResponse:
+                description: |-
+                  ConfigMapRef points to a specific ConfigMap object.
+
+
+                  Note that for security reasons, the token response object (i.e., the config map) is
+                  always kept in the same namespace as the token request object.
+                properties:
+                  apiGroup:
+                    description: APIGroup is the API group of the referred config
+                      map object.
+                    type: string
+                  kind:
+                    description: Kind is the kind of the referred config map object.
+                    type: string
+                  name:
+                    description: Name is the name of the referred config map object.
+                    type: string
+                required:
+                - apiGroup
+                - kind
+                - name
+                type: object
+                x-kubernetes-map-type: atomic
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -36,6 +36,14 @@ func SetupProviderFileFlag() *string {
 	return flag.String("clusterprofile-provider-file", "clusterprofile-provider-file.json", "Path to the JSON configuration file")
 }
 
+func SetupUseAuthnExecExtensionsAsArgsFlag() *bool {
+	return flag.Bool("use-authn-exec-extensions-as-args", false, "If set to true, the per cluster authn exec extensions will be passed to the exec plugin as additional arguments")
+}
+
+func SetupAdditionalArgsFlag() *string {
+	return flag.String("additional-args", "", "Additional arguments to pass to the exec plugin in the form of comma-separated key=value pairs")
+}
+
 func NewFromFile(path string) (*CredentialsProvider, error) {
 	// 1. Read the file's content
 	data, err := os.ReadFile(path)
@@ -53,13 +61,23 @@ func NewFromFile(path string) (*CredentialsProvider, error) {
 	return &providers, nil
 }
 
-func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.ClusterProfile) (*rest.Config, error) {
+func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.ClusterProfile, useAuthnExecExtensions bool, additionalArgs map[string]string) (*rest.Config, error) {
 	// 1. obtain the correct provider from the CP
 	provider := cp.getProviderFromClusterProfile(clusterprofile)
 	if provider == nil {
 		return nil, fmt.Errorf("no matching provider found for cluster profile %q", clusterprofile.Name)
 	}
 	cluster := convertCluster(provider.Cluster)
+	authnExtensionArgs := map[string]string{}
+	if useAuthnExecExtensions {
+		for _, ext := range provider.Cluster.Extensions {
+			if ext.Name == "client.authentication.k8s.io/exec" {
+				if err := json.Unmarshal(ext.Extension.Raw, &authnExtensionArgs); err != nil {
+					return nil, fmt.Errorf("failed to unmarshal authn exec extension: %w", err)
+				}
+			}
+		}
+	}
 
 	// 2. Get Exec Config
 	execConfig := cp.getExecConfigFromConfig(provider.Name)
@@ -81,10 +99,17 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 		},
 	}
 
+	expandedArgs := execConfig.Args
+	for k, v := range authnExtensionArgs {
+		expandedArgs = append(expandedArgs, fmt.Sprintf("%s=%s", k, v))
+	}
+	for k, v := range additionalArgs {
+		expandedArgs = append(expandedArgs, fmt.Sprintf("%s=%s", k, v))
+	}
 	config.ExecProvider = &clientcmdapi.ExecConfig{
 		APIVersion:         execConfig.APIVersion,
 		Command:            execConfig.Command,
-		Args:               execConfig.Args,
+		Args:               expandedArgs,
 		Env:                execConfig.Env,
 		InteractiveMode:    "Never",
 		ProvideClusterInfo: execConfig.ProvideClusterInfo,

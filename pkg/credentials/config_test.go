@@ -344,7 +344,7 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 			mismatchedCP := New([]Provider{
 				{Name: "different-provider", ExecConfig: &clientcmdapi.ExecConfig{Command: "cmd"}},
 			})
-			config, err := mismatchedCP.BuildConfigFromCP(clusterProfile)
+			config, err := mismatchedCP.BuildConfigFromCP(clusterProfile, false, nil)
 			gomega.Expect(err).To(gomega.HaveOccurred())
 			gomega.Expect(config).To(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("no matching provider found for cluster profile"))
@@ -355,7 +355,7 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 			noExecCP := New([]Provider{
 				{Name: "test-provider-1", ExecConfig: nil},
 			})
-			config, err := noExecCP.BuildConfigFromCP(clusterProfile)
+			config, err := noExecCP.BuildConfigFromCP(clusterProfile, false, nil)
 			gomega.Expect(err).To(gomega.HaveOccurred())
 			gomega.Expect(config).To(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("no exec credentials found for provider"))
@@ -384,7 +384,7 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 				}},
 			})
 
-			config, err := execCP.BuildConfigFromCP(clusterProfile)
+			config, err := execCP.BuildConfigFromCP(clusterProfile, false, nil)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(config).NotTo(gomega.BeNil())
 			gomega.Expect(config.Host).To(gomega.Equal("https://test-server.com"))

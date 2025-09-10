@@ -129,7 +129,7 @@ var _ = ginkgo.Describe("Credentials test", func() {
 		credentialConfig, err := credentials.NewFromFile(configFile)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		config, err := credentialConfig.BuildConfigFromCP(cp, false, nil)
+		config, err := credentialConfig.BuildConfigFromCP(cp)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(config).NotTo(gomega.BeNil())
 

@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 )
 
@@ -76,9 +77,17 @@ type ClusterProfileStatus struct {
 	CredentialProviders []CredentialProvider `json:"credentialProviders,omitempty"`
 }
 
+// NamedExtension is a piece of additional configuration that applies to a credential provider;
+// it is uniquely identified by a name.
+type NamedExtension struct {
+	Name      string               `json:"name"`
+	Extension runtime.RawExtension `json:"extension"`
+}
+
 type CredentialProvider struct {
-	Name    string              `json:"name"`
-	Cluster clientcmdv1.Cluster `json:"cluster,omitempty"`
+	Name       string              `json:"name"`
+	Cluster    clientcmdv1.Cluster `json:"cluster,omitempty"`
+	Extensions []NamedExtension    `json:"extensions,omitempty"`
 }
 
 // ClusterVersion represents version information about the cluster.

@@ -77,17 +77,17 @@ type ClusterProfileStatus struct {
 	CredentialProviders []CredentialProvider `json:"credentialProviders,omitempty"`
 }
 
-// NamedExtension is a piece of additional configuration that applies to a credential provider;
+// SupplementalInformation is a piece of additional configuration that applies to a credential provider;
 // it is uniquely identified by a name.
-type NamedExtension struct {
-	Name      string               `json:"name"`
-	Extension runtime.RawExtension `json:"extension"`
+type SupplementalInformation struct {
+	Name string               `json:"name"`
+	Data runtime.RawExtension `json:"data"`
 }
 
 type CredentialProvider struct {
-	Name       string              `json:"name"`
-	Cluster    clientcmdv1.Cluster `json:"cluster,omitempty"`
-	Extensions []NamedExtension    `json:"extensions,omitempty"`
+	Name             string                    `json:"name"`
+	Cluster          clientcmdv1.Cluster       `json:"cluster,omitempty"`
+	SupplementalInfo []SupplementalInformation `json:"supplementalInfo,omitempty"`
 }
 
 // ClusterVersion represents version information about the cluster.

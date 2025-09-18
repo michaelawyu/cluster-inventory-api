@@ -159,10 +159,10 @@ func convertCluster(cluster clientcmdv1.Cluster) *clientauthentication.Cluster {
 func extractAdditionalArgsFromProvider(provider *v1alpha1.CredentialProvider) ([]string, error) {
 	var additionalArgs []string
 
-	for idx := range provider.Extensions {
-		ext := provider.Extensions[idx]
+	for idx := range provider.SupplementalInfo {
+		ext := provider.SupplementalInfo[idx]
 		if ext.Name == execPluginAdditionalArgsExtensionName {
-			if err := yaml.Unmarshal([]byte(ext.Extension.Raw), &additionalArgs); err != nil {
+			if err := yaml.Unmarshal([]byte(ext.Data.Raw), &additionalArgs); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal extension: %w", err)
 			}
 			break
@@ -175,10 +175,10 @@ func extractAdditionalArgsFromProvider(provider *v1alpha1.CredentialProvider) ([
 func extractAdditionalEnvsFromProvider(provider *v1alpha1.CredentialProvider) (map[string]string, error) {
 	additionalEnvs := map[string]string{}
 
-	for idx := range provider.Extensions {
-		ext := provider.Extensions[idx]
+	for idx := range provider.SupplementalInfo {
+		ext := provider.SupplementalInfo[idx]
 		if ext.Name == execPluginAdditionalEnvsExtensionName {
-			if err := yaml.Unmarshal([]byte(ext.Extension.Raw), &additionalEnvs); err != nil {
+			if err := yaml.Unmarshal([]byte(ext.Data.Raw), &additionalEnvs); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal extension: %w", err)
 			}
 			break

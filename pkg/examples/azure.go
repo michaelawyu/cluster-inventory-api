@@ -69,10 +69,10 @@ func main() {
 						Server:                   "https://bravelion.hcp.eastus.azmk8s.io:443",
 						CertificateAuthorityData: []byte(""),
 					},
-					Extensions: []v1alpha1.NamedExtension{
+					SupplementalInfo: []v1alpha1.SupplementalInformation{
 						{
 							Name: "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-args",
-							Extension: runtime.RawExtension{
+							Data: runtime.RawExtension{
 								Raw: additionalArgsYAML,
 							},
 						},

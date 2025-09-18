@@ -194,24 +194,24 @@ spec:
                       required:
                       - server
                       type: object
-                    extensions:
+                    name:
+                      type: string
+                    supplementalInfo:
                       items:
                         description: |-
-                          NamedExtension is a piece of additional configuration that applies to a credential provider;
+                          SupplementalInformation is a piece of additional configuration that applies to a credential provider;
                           it is uniquely identified by a name.
                         properties:
-                          extension:
+                          data:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
                           name:
                             type: string
                         required:
-                        - extension
+                        - data
                         - name
                         type: object
                       type: array
-                    name:
-                      type: string
                   required:
                   - name
                   type: object

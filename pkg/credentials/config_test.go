@@ -185,25 +185,25 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 
 	ginkgo.Describe("getExecConfigFromConfig", func() {
 		ginkgo.It("should return the correct ExecConfig for existing provider", func() {
-			execConfig := credentialsProvider.getExecConfigFromConfig("test-provider-1")
+			execConfig, _ := credentialsProvider.getExecConfigAndOverriderFromConfig("test-provider-1")
 			gomega.Expect(execConfig).NotTo(gomega.BeNil())
 			gomega.Expect(execConfig.Command).To(gomega.Equal("test-command-1"))
 			gomega.Expect(execConfig.Args).To(gomega.Equal([]string{"arg1", "arg2"}))
 		})
 
 		ginkgo.It("should return nil for non-existing provider", func() {
-			execConfig := credentialsProvider.getExecConfigFromConfig("non-existent-provider")
+			execConfig, _ := credentialsProvider.getExecConfigAndOverriderFromConfig("non-existent-provider")
 			gomega.Expect(execConfig).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should return nil for empty provider name", func() {
-			execConfig := credentialsProvider.getExecConfigFromConfig("")
+			execConfig, _ := credentialsProvider.getExecConfigAndOverriderFromConfig("")
 			gomega.Expect(execConfig).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should handle CredentialsProvider with no providers", func() {
 			emptyCP := New([]Provider{})
-			execConfig := emptyCP.getExecConfigFromConfig("any-provider")
+			execConfig, _ := emptyCP.getExecConfigAndOverriderFromConfig("any-provider")
 			gomega.Expect(execConfig).To(gomega.BeNil())
 		})
 	})
@@ -279,40 +279,6 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 			// The returned provider should not be affected
 			gomega.Expect(provider.Cluster.Server).To(gomega.Equal(originalServer))
 			gomega.Expect(provider.Cluster.Server).NotTo(gomega.Equal("modified-server"))
-		})
-	})
-
-	ginkgo.Describe("convertCluster", func() {
-		ginkgo.It("should convert clientcmdv1.Cluster to clientauthentication.Cluster", func() {
-			inputCluster := clientcmdv1.Cluster{
-				Server:                   "https://test-server.com",
-				TLSServerName:            "test-tls-server",
-				InsecureSkipTLSVerify:    true,
-				CertificateAuthorityData: []byte("test-ca-data"),
-				ProxyURL:                 "http://proxy.example.com",
-				DisableCompression:       true,
-			}
-
-			result := convertCluster(inputCluster)
-			gomega.Expect(result).NotTo(gomega.BeNil())
-			gomega.Expect(result.Server).To(gomega.Equal("https://test-server.com"))
-			gomega.Expect(result.TLSServerName).To(gomega.Equal("test-tls-server"))
-			gomega.Expect(result.InsecureSkipTLSVerify).To(gomega.BeTrue())
-			gomega.Expect(result.CertificateAuthorityData).To(gomega.Equal([]byte("test-ca-data")))
-			gomega.Expect(result.ProxyURL).To(gomega.Equal("http://proxy.example.com"))
-			gomega.Expect(result.DisableCompression).To(gomega.BeTrue())
-		})
-
-		ginkgo.It("should handle empty cluster", func() {
-			inputCluster := clientcmdv1.Cluster{}
-			result := convertCluster(inputCluster)
-			gomega.Expect(result).NotTo(gomega.BeNil())
-			gomega.Expect(result.Server).To(gomega.BeEmpty())
-			gomega.Expect(result.TLSServerName).To(gomega.BeEmpty())
-			gomega.Expect(result.InsecureSkipTLSVerify).To(gomega.BeFalse())
-			gomega.Expect(result.CertificateAuthorityData).To(gomega.BeNil())
-			gomega.Expect(result.ProxyURL).To(gomega.BeEmpty())
-			gomega.Expect(result.DisableCompression).To(gomega.BeFalse())
 		})
 	})
 

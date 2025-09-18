@@ -13,9 +13,14 @@ import (
 	"sigs.k8s.io/cluster-inventory-api/apis/v1alpha1"
 )
 
+type ExecConfigOverrider interface {
+	OverrideExecConfig(execConfig *clientcmdapi.ExecConfig, provider v1alpha1.CredentialProvider) error
+}
+
 type Provider struct {
-	Name       string                   `json:"name"`
-	ExecConfig *clientcmdapi.ExecConfig `json:"execConfig"`
+	Name                string                   `json:"name"`
+	ExecConfig          *clientcmdapi.ExecConfig `json:"execConfig"`
+	ExecConfigOverrider ExecConfigOverrider      `json:"execConfigOverrider,omitempty"`
 }
 
 type CredentialsProvider struct {
@@ -59,7 +64,7 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 	}
 
 	// 2. Get Exec Config
-	execConfig := cp.getExecConfigFromConfig(provider.Name)
+	execConfig, execConfigOverrider := cp.getExecConfigAndOverriderFromConfig(provider.Name)
 	if execConfig == nil {
 		return nil, fmt.Errorf("no exec credentials found for provider %q", provider.Name)
 	}
@@ -78,7 +83,7 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 		},
 	}
 
-	config.ExecProvider = &clientcmdapi.ExecConfig{
+	execProvider := &clientcmdapi.ExecConfig{
 		APIVersion:         execConfig.APIVersion,
 		Command:            execConfig.Command,
 		Args:               execConfig.Args,
@@ -86,17 +91,22 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 		InteractiveMode:    "Never",
 		ProvideClusterInfo: execConfig.ProvideClusterInfo,
 	}
-
+	if execConfigOverrider != nil {
+		if err := execConfigOverrider.OverrideExecConfig(execProvider, *provider); err != nil {
+			return nil, fmt.Errorf("failed to override exec config for provider %q: %w", provider.Name, err)
+		}
+	}
+	config.ExecProvider = execProvider
 	return config, nil
 }
 
-func (cp *CredentialsProvider) getExecConfigFromConfig(providerName string) *clientcmdapi.ExecConfig {
+func (cp *CredentialsProvider) getExecConfigAndOverriderFromConfig(providerName string) (*clientcmdapi.ExecConfig, ExecConfigOverrider) {
 	for _, provider := range cp.Providers {
 		if provider.Name == providerName {
-			return provider.ExecConfig
+			return provider.ExecConfig, provider.ExecConfigOverrider
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (cp *CredentialsProvider) getProviderFromClusterProfile(cluster *v1alpha1.ClusterProfile) *v1alpha1.CredentialProvider {

@@ -8,14 +8,24 @@ import (
 	"net/url"
 	"os"
 
+	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	clientcmdapilatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"sigs.k8s.io/cluster-inventory-api/apis/v1alpha1"
 )
 
+const (
+	execExtensionName              = "client.authentication.k8s.io/exec"
+	additionalCLIArgsExtensionName = "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-args"
+	additionalEnvVarsExtensionName = "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-envs"
+)
+
 type Provider struct {
-	Name       string                   `json:"name"`
-	ExecConfig *clientcmdapi.ExecConfig `json:"execConfig"`
+	Name                            string                   `json:"name"`
+	ExecConfig                      *clientcmdapi.ExecConfig `json:"execConfig"`
+	AllowAdditionalCLIArgsExtension bool                     `json:"allowAdditionalCLIArgsExtension,omitempty"`
+	AllowAdditionalEnvVarsExtension bool                     `json:"allowAdditionalEnvVarsExtension,omitempty"`
 }
 
 type CredentialsProvider struct {
@@ -59,9 +69,53 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 	}
 
 	// 2. Get Exec Config
-	execConfig := cp.getExecConfigFromConfig(provider.Name)
+	execConfig, allowAdditionalCLIArgsExtension, allowAdditionalEnvVarsExtension := cp.getExecConfigAndExtFlagsFromConfig(provider.Name)
 	if execConfig == nil {
 		return nil, fmt.Errorf("no exec credentials found for provider %q", provider.Name)
+	}
+
+	// Retrieve the extensions.
+	ic := clientcmdapi.NewCluster()
+	// The conversion will save the extension data as runtime.Unknown objects.
+	if err := clientcmdapilatest.Scheme.Convert(&provider.Cluster, ic, nil); err != nil {
+		return nil, fmt.Errorf("failed to convert v1 Cluster to internal: %w", err)
+	}
+	execExts := ic.Extensions[execExtensionName]
+
+	// Check if the additional CLI args extension exists.
+	for idx := range provider.Cluster.Extensions {
+		ext := &provider.Cluster.Extensions[idx]
+
+		switch {
+		case allowAdditionalCLIArgsExtension && ext.Name == additionalCLIArgsExtensionName:
+			var additionalArgs []string
+			if err := yaml.Unmarshal(ext.Extension.Raw, &additionalArgs); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal additional CLI args extension: %w", err)
+			}
+			execConfig.Args = append(execConfig.Args, additionalArgs...)
+		case allowAdditionalEnvVarsExtension && ext.Name == additionalEnvVarsExtensionName:
+			var additionalEnvs map[string]string
+			if err := yaml.Unmarshal(ext.Extension.Raw, &additionalEnvs); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal additional env vars extension: %w", err)
+			}
+
+			// Update the value of existing env vars.
+			for idx := range execConfig.Env {
+				env := &execConfig.Env[idx]
+				if _, exists := additionalEnvs[env.Name]; exists {
+					env.Value = additionalEnvs[env.Name]
+					delete(additionalEnvs, env.Name)
+				}
+			}
+
+			// Add new env vars.
+			for name, value := range additionalEnvs {
+				execConfig.Env = append(execConfig.Env, clientcmdapi.ExecEnvVar{
+					Name:  name,
+					Value: value,
+				})
+			}
+		}
 	}
 
 	// 3. build resulting rest.Config
@@ -85,18 +139,19 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 		Env:                execConfig.Env,
 		InteractiveMode:    "Never",
 		ProvideClusterInfo: execConfig.ProvideClusterInfo,
+		Config:             execExts,
 	}
 
 	return config, nil
 }
 
-func (cp *CredentialsProvider) getExecConfigFromConfig(providerName string) *clientcmdapi.ExecConfig {
+func (cp *CredentialsProvider) getExecConfigAndExtFlagsFromConfig(providerName string) (*clientcmdapi.ExecConfig, bool, bool) {
 	for _, provider := range cp.Providers {
 		if provider.Name == providerName {
-			return provider.ExecConfig
+			return provider.ExecConfig, provider.AllowAdditionalCLIArgsExtension, provider.AllowAdditionalEnvVarsExtension
 		}
 	}
-	return nil
+	return nil, false, false
 }
 
 func (cp *CredentialsProvider) getProviderFromClusterProfile(cluster *v1alpha1.ClusterProfile) *v1alpha1.CredentialProvider {

@@ -35,8 +35,7 @@ func main() {
 				ProvideClusterInfo: false,
 				InteractiveMode:    clientcmdapi.NeverExecInteractiveMode,
 			},
-			AllowAdditionalCLIArgsExtension: true,
-			AllowAdditionalEnvVarsExtension: false,
+			AdditionalCLIArgsEnvVarExtensionMode: credentials.AdditionalCLIArgsEnvVarExtensionModeAllow,
 		},
 	}
 	cps := credentials.New(providers)
@@ -44,7 +43,6 @@ func main() {
 	// The additional arguments are cluster-specific information.
 	additionalArgs := []string{
 		"--tenant-id", "TENANT_ID",
-		"--client-id", "CLIENT_ID",
 		"--authority-host", "https://login.microsoftonline.com/",
 		// The kubelogin plugin already knows the scopes for AKS; no need to specify it explicitly.
 	}
@@ -52,6 +50,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to marshal additional args")
 	}
+
+	additionalEnvVars := map[string]string{
+		"AZURE_CLIENT_ID": "CLIENT_ID",
+	}
+	additionalEnvVarsYAML, err := yaml.Marshal(additionalEnvVars)
+	if err != nil {
+		log.Fatalf("failed to marshal additional env vars")
+	}
+
 	profile := &v1alpha1.ClusterProfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bravelion",
@@ -75,6 +82,12 @@ func main() {
 								Name: "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-args",
 								Extension: runtime.RawExtension{
 									Raw: additionalArgsYAML,
+								},
+							},
+							{
+								Name: "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-envs",
+								Extension: runtime.RawExtension{
+									Raw: additionalEnvVarsYAML,
 								},
 							},
 						},

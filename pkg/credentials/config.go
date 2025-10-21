@@ -11,8 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-<<<<<<< HEAD
-	clientcmdapilatest "k8s.io/client-go/tools/clientcmd/api/latest"
+	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"sigs.k8s.io/cluster-inventory-api/apis/v1alpha1"
 )
 
@@ -21,23 +20,24 @@ const (
 	additionalCLIArgsExtensionName = "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-args"
 	additionalEnvVarsExtensionName = "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-envs"
 )
-=======
-	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
-	"sigs.k8s.io/cluster-inventory-api/apis/v1alpha1"
-)
 
 // client.authentication.k8s.io/exec is a reserved extension key defined by the Kubernetes
 // client authentication API (SIG Auth), not by the ClusterProfile API.
 // Reference:
 // https://kubernetes.io/docs/reference/config-api/client-authentication.v1beta1/#client-authentication-k8s-io-v1beta1-Cluster
 const clusterExtensionKey = "client.authentication.k8s.io/exec"
->>>>>>> d0f63081cecbeeedac33fb41b1d1c2714d3dcd70
+
+type AdditionalCLIArgsEnvVarExtensionMode int
+
+const (
+	AdditionalCLIArgsEnvVarExtensionModeIgnore AdditionalCLIArgsEnvVarExtensionMode = iota
+	AdditionalCLIArgsEnvVarExtensionModeAllow
+)
 
 type Provider struct {
-	Name                            string                   `json:"name"`
-	ExecConfig                      *clientcmdapi.ExecConfig `json:"execConfig"`
-	AllowAdditionalCLIArgsExtension bool                     `json:"allowAdditionalCLIArgsExtension,omitempty"`
-	AllowAdditionalEnvVarsExtension bool                     `json:"allowAdditionalEnvVarsExtension,omitempty"`
+	Name                                 string                               `json:"name"`
+	ExecConfig                           *clientcmdapi.ExecConfig             `json:"execConfig"`
+	AdditionalCLIArgsEnvVarExtensionMode AdditionalCLIArgsEnvVarExtensionMode `json:"additionalCLIArgsEnvVarExtensionMode,omitempty"`
 }
 
 type CredentialsProvider struct {
@@ -81,7 +81,7 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 	}
 
 	// 2. Get Exec Config
-	execConfig, allowAdditionalCLIArgsExtension, allowAdditionalEnvVarsExtension := cp.getExecConfigAndExtFlagsFromConfig(provider.Name)
+	execConfig, extMode := cp.getExecConfigAndExtModeFromConfig(provider.Name)
 	if execConfig == nil {
 		return nil, fmt.Errorf("no exec credentials found for provider %q", provider.Name)
 	}
@@ -89,7 +89,7 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 	// Retrieve the extensions.
 	ic := clientcmdapi.NewCluster()
 	// The conversion will save the extension data as runtime.Unknown objects.
-	if err := clientcmdapilatest.Scheme.Convert(&provider.Cluster, ic, nil); err != nil {
+	if err := clientcmdlatest.Scheme.Convert(&provider.Cluster, ic, nil); err != nil {
 		return nil, fmt.Errorf("failed to convert v1 Cluster to internal: %w", err)
 	}
 	execExts := ic.Extensions[execExtensionName]
@@ -99,13 +99,13 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 		ext := &provider.Cluster.Extensions[idx]
 
 		switch {
-		case allowAdditionalCLIArgsExtension && ext.Name == additionalCLIArgsExtensionName:
+		case extMode == AdditionalCLIArgsEnvVarExtensionModeAllow && ext.Name == additionalCLIArgsExtensionName:
 			var additionalArgs []string
 			if err := yaml.Unmarshal(ext.Extension.Raw, &additionalArgs); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal additional CLI args extension: %w", err)
 			}
 			execConfig.Args = append(execConfig.Args, additionalArgs...)
-		case allowAdditionalEnvVarsExtension && ext.Name == additionalEnvVarsExtensionName:
+		case extMode == AdditionalCLIArgsEnvVarExtensionModeAllow && ext.Name == additionalEnvVarsExtensionName:
 			var additionalEnvs map[string]string
 			if err := yaml.Unmarshal(ext.Extension.Raw, &additionalEnvs); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal additional env vars extension: %w", err)
@@ -164,13 +164,13 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 	return config, nil
 }
 
-func (cp *CredentialsProvider) getExecConfigAndExtFlagsFromConfig(providerName string) (*clientcmdapi.ExecConfig, bool, bool) {
+func (cp *CredentialsProvider) getExecConfigAndExtModeFromConfig(providerName string) (*clientcmdapi.ExecConfig, AdditionalCLIArgsEnvVarExtensionMode) {
 	for _, provider := range cp.Providers {
 		if provider.Name == providerName {
-			return provider.ExecConfig, provider.AllowAdditionalCLIArgsExtension, provider.AllowAdditionalEnvVarsExtension
+			return provider.ExecConfig, provider.AdditionalCLIArgsEnvVarExtensionMode
 		}
 	}
-	return nil, false, false
+	return nil, AdditionalCLIArgsEnvVarExtensionModeIgnore
 }
 
 func (cp *CredentialsProvider) getProviderFromClusterProfile(cluster *v1alpha1.ClusterProfile) *v1alpha1.CredentialProvider {

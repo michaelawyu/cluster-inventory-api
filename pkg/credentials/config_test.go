@@ -282,6 +282,7 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 		})
 	})
 
+<<<<<<< HEAD
 	/**
 	ginkgo.Describe("convertCluster", func() {
 		ginkgo.It("should convert clientcmdv1.Cluster to clientauthentication.Cluster", func() {
@@ -318,6 +319,8 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 	})
 	**/
 
+=======
+>>>>>>> d0f63081cecbeeedac33fb41b1d1c2714d3dcd70
 	ginkgo.Describe("BuildConfigFromCP", func() {
 		var clusterProfile *v1alpha1.ClusterProfile
 

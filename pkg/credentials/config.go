@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+<<<<<<< HEAD
 	clientcmdapilatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"sigs.k8s.io/cluster-inventory-api/apis/v1alpha1"
 )
@@ -20,6 +21,17 @@ const (
 	additionalCLIArgsExtensionName = "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-args"
 	additionalEnvVarsExtensionName = "multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-envs"
 )
+=======
+	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
+	"sigs.k8s.io/cluster-inventory-api/apis/v1alpha1"
+)
+
+// client.authentication.k8s.io/exec is a reserved extension key defined by the Kubernetes
+// client authentication API (SIG Auth), not by the ClusterProfile API.
+// Reference:
+// https://kubernetes.io/docs/reference/config-api/client-authentication.v1beta1/#client-authentication-k8s-io-v1beta1-Cluster
+const clusterExtensionKey = "client.authentication.k8s.io/exec"
+>>>>>>> d0f63081cecbeeedac33fb41b1d1c2714d3dcd70
 
 type Provider struct {
 	Name                            string                   `json:"name"`
@@ -141,6 +153,13 @@ func (cp *CredentialsProvider) BuildConfigFromCP(clusterprofile *v1alpha1.Cluste
 		ProvideClusterInfo: execConfig.ProvideClusterInfo,
 		Config:             execExts,
 	}
+
+	// Propagate reserved extension into ExecCredential.Spec.Cluster.Config if present
+	internalCluster := clientcmdapi.NewCluster()
+	if err := clientcmdlatest.Scheme.Convert(&provider.Cluster, internalCluster, nil); err != nil {
+		return nil, fmt.Errorf("failed to convert v1 Cluster to internal: %w", err)
+	}
+	config.ExecProvider.Config = internalCluster.Extensions[clusterExtensionKey]
 
 	return config, nil
 }

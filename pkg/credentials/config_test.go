@@ -185,25 +185,25 @@ var _ = ginkgo.Describe("CredentialsProvider", func() {
 
 	ginkgo.Describe("getExecConfigFromConfig", func() {
 		ginkgo.It("should return the correct ExecConfig for existing provider", func() {
-			execConfig := credentialsProvider.getExecConfigFromConfig("test-provider-1")
+			execConfig, _ := credentialsProvider.getExecConfigAndExtModeFromConfig("test-provider-1")
 			gomega.Expect(execConfig).NotTo(gomega.BeNil())
 			gomega.Expect(execConfig.Command).To(gomega.Equal("test-command-1"))
 			gomega.Expect(execConfig.Args).To(gomega.Equal([]string{"arg1", "arg2"}))
 		})
 
 		ginkgo.It("should return nil for non-existing provider", func() {
-			execConfig := credentialsProvider.getExecConfigFromConfig("non-existent-provider")
+			execConfig, _ := credentialsProvider.getExecConfigAndExtModeFromConfig("non-existent-provider")
 			gomega.Expect(execConfig).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should return nil for empty provider name", func() {
-			execConfig := credentialsProvider.getExecConfigFromConfig("")
+			execConfig, _ := credentialsProvider.getExecConfigAndExtModeFromConfig("")
 			gomega.Expect(execConfig).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should handle CredentialsProvider with no providers", func() {
 			emptyCP := New([]Provider{})
-			execConfig := emptyCP.getExecConfigFromConfig("any-provider")
+			execConfig, _ := emptyCP.getExecConfigAndExtModeFromConfig("any-provider")
 			gomega.Expect(execConfig).To(gomega.BeNil())
 		})
 	})
